@@ -33,7 +33,7 @@ const getMessages = asyncHandler(async (req, res, next) => {
 const sendMessage = asyncHandler(async (req, res, next) => {
     const { id: receiverId } = req.params;
     const text = req.body?.text || '';
-    const files = req.files;
+    const files = req.files || [];
     const senderId = req.user._id;
 
     if (!isValidObjectId(receiverId)) {
