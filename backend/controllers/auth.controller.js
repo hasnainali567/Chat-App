@@ -5,6 +5,8 @@ import asyncHandler from '../utils/AsyncHandler.js'
 import ApiResponse from '../utils/ApiResponse.js'
 import cookieOptions from "../utils/cookieOptions.js"
 import { uploadToCloudinary } from '../config/cloudinary.js';
+import { v2 as cloudinary } from "cloudinary"
+import fs from "fs"
 
 const signup = asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
@@ -72,32 +74,72 @@ const update = asyncHandler(async (req, res, next) => {
     const user = req.user;
     const file = req.file;
     const password = req.body?.password;
+    const newPassword = req.body?.newPassword;
 
-    if (password) {
-        if (password.lenght < 6) {
+    if (password && newPassword) {
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
             if (req.file) {
-
-                fs.unlink(imagePath, (err) => {
-                    if (err) console.log('Failed to delete unused file:', err);
+                fs.unlink(req.file.path, (err) => {
+                    if (err) {
+                        console.error('Error deleting the uploaded file:', err);
+                    }
                 });
             }
-            return next(new ApiError(400, 'Bad Request', 'Password must be 6 character long'))
+            return next(new ApiError(401, 'Unauthorized', 'Current password is incorrect'));
         }
-        user.password = password
-    }
-    if (file) {
-        const imagePath = file.path;
-        const uploadedImage = await uploadToCloudinary(imagePath, 'profile_pictures');
-        user.profilePic = uploadedImage.secure_url;
+        if (newPassword.length < 6) {
+            if (req.file) {
+                fs.unlink(req.file.path, (err) => {
+                    if (err) {
+                        console.error('Error deleting the uploaded file:', err);
+                    }
+                });
+            }
+            return next(new ApiError(400, 'Bad Request', 'New password must be at least 6 characters long'));
+        }
+        user.password = newPassword;
+    } else if (password || newPassword) {
+        return next(new ApiError(400, 'Bad Request', 'Both current and new passwords are required to change password'));
     }
 
-    await user.save();
-    const { password: _, __v, ...userData } = user.toObject();
-    res.status(200).json(new ApiResponse(200, 'Profile updated successfully', { user: userData }));
+    try {
+        if (file) {
+            const oldProfilePic = user.profilePic;
+            const imagePath = file.path;
+            const uploadedImage = await uploadToCloudinary(imagePath, 'profile_pictures');
+            user.profilePic = uploadedImage.secure_url;
+
+            if (oldProfilePic) {
+                try {
+                    const publicId = oldProfilePic.split('/').pop().split('.')[0];
+                    await cloudinary.uploader.destroy(publicId);
+                } catch (err) {
+                    console.error("Cloudinary cleanup failed:", err);
+                }
+            }
+        }
+
+        await user.save();
+        const { password: _, __v, ...userData } = user.toObject();
+        return res.status(200).json(new ApiResponse(200, 'Profile updated successfully', { user: userData }));
+    } finally {
+        if (file) {
+            fs.existsSync(file.path) &&
+                fs.unlink(file.path, (err) => {
+                    if (err) {
+                        console.error('Error deleting the uploaded file:', err);
+                    }
+                });
+        }
+    }
+
 })
 
 const checkAuth = asyncHandler(async (req, res, next) => {
     const user = req.user;
+    console.log('User in check Auth', user);
+
     const { password: _, __v, ...userData } = user.toObject();
     res.status(200).json(new ApiResponse(200, 'User is Authenticated', { user: userData }));
 })
