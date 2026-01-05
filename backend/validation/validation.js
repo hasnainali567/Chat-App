@@ -4,7 +4,7 @@ const signupValidation = [
     body("fullName")
         .notEmpty()
         .withMessage("Full name is required")
-        .isAlpha()
+        .matches(/^[a-zA-Z\s]+$/) // will match only alphabetic characters and spaces
         .withMessage("Fullname can't contain numerics")
         .isLength({ min: 3 })
         .withMessage("Full name must be at least 3 characters long"),
