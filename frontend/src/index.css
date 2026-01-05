@@ -1,0 +1,81 @@
+@import 'tailwindcss';
+
+@plugin 'daisyui' {
+    themes: light --default, dim --prefersdark, cupcake, retro, bumblebee, synthwave, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, acid, lemonade, night, coffee, winter, nord, sunset, business;
+}
+
+;
+
+.chat-image-box {
+    width: 200px;
+    height: 200px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+}
+
+.chat-image-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.count-layer {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 32px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Viewer */
+
+.image-viewer {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.image-viewer img {
+    max-width: 90%;
+    max-height: 90%;
+}
+
+.close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 28px;
+    background: none;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 50px;
+    background: none;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.nav.left {
+    left: 20px;
+}
+
+.nav.right {
+    right: 20px;
+}
