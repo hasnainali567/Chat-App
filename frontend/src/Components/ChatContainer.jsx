@@ -4,12 +4,13 @@ import MessageSkeleton from './Skeletons/MessageSkeleton';
 import ChatHeader from './ChatHeader';
 import MessageInput from './MessageInput';
 import useAuth from '../Store/useAuthStore';
-import { PhotoProvider, PhotoView } from 'react-photo-view';
-import 'react-photo-view/dist/react-photo-view.css';
+import { FaAngleRight, FaAngleLeft } from "react-icons/fa";
+import { IoClose } from "react-icons/io5";
+
 
 const ChatContainer = () => {
 
-    const { messages, getMessages, isMessagesLoading, selectedUser } = useChatStore();
+    const { messages, getMessages, isMessagesLoading, selectedUser, subscribeToNewMessages, unSubscribeFromNewMessages } = useChatStore();
     const { user } = useAuth()
     const messageEndRef = useRef(null);
     const [viewerOpen, setViewerOpen] = useState(false);
@@ -26,8 +27,16 @@ const ChatContainer = () => {
     useEffect(() => {
         if (selectedUser && selectedUser?._id) {
             getMessages(selectedUser._id);
+            subscribeToNewMessages();
         }
-    }, [selectedUser, getMessages]);
+        return () => {
+            unSubscribeFromNewMessages();
+        };
+    }, [selectedUser, getMessages, subscribeToNewMessages, unSubscribeFromNewMessages]);
+
+    useEffect(() => {
+        messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
     if (isMessagesLoading) {
         return <div className="flex-1 flex flex-col overflow-auto">
             <ChatHeader />
@@ -87,7 +96,7 @@ const ChatContainer = () => {
             </div>
             {viewerOpen && (
                 <div className="image-viewer">
-                    <button className="close" onClick={() => setViewerOpen(false)}>✕</button>
+                    <button className="close" onClick={() => setViewerOpen(false)}><IoClose  /></button>
 
                     <button
                         className="nav left"
@@ -99,7 +108,7 @@ const ChatContainer = () => {
                             )
                         }
                     >
-                        ‹
+                        <FaAngleLeft />
                     </button>
 
                     <img src={viewerImages[currentIndex]} alt="" />
@@ -114,7 +123,7 @@ const ChatContainer = () => {
                             )
                         }
                     >
-                        ›
+                        <FaAngleRight className='ps-1' />
                     </button>
                 </div>
             )}
