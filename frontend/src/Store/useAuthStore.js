@@ -1,31 +1,37 @@
 import { create } from 'zustand'
 import api from '../Lib/axios'
 import toast from 'react-hot-toast';
-const useAuth = create((set) => ({
+import { io } from 'socket.io-client';
+
+const BASE_URL = import.meta.env.MODE === 'development' ? 'http://localhost:3000' : '/';
+const useAuth = create((set, get) => ({
     user: null,
     isCheckingAuth: true,
     isSigningUp: false,
     isLoggingIn: false,
     isUpdatingProfile: false,
     onlineUsers: [],
+    socket : null,
 
     checkAuth: async () => {
         try {
-
+            const token = localStorage.getItem('token');
+            if (!token) {
+                set({ isCheckingAuth: false });
+                return;
+            }
             set({ isCheckingAuth: true });
             const res = await api.get('/auth/check-auth', {
                 headers: {
-                    Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OTU3ODNmNGZkYTE3Njg1NWFlM2Q5M2YiLCJlbWFpbCI6Imhhc25haW4yQGdtYWlsLmNvbSIsImZ1bGxOYW1lIjoiSGFzbmFpbiIsImlhdCI6MTc2NzU0NjI3NywiZXhwIjoxNzY3NTQ5ODc3fQ.K8wUsQlsNU5PGfsCiz8AOhJl4llRzXxaoRxVeIl-Mbs`,
+                    Authorization: `Bearer ${token}`,
                 },
             });
             
             const { user } = res?.data?.data;
 
             set({ user, isCheckingAuth: false });
+            get().connectSocket();
 
-        } catch (error) {
-            toast.error('Authentication check failed. Please log in.');
-            set({ user: null });
         } finally {
             set({ isCheckingAuth: false });
         }
@@ -35,9 +41,11 @@ const useAuth = create((set) => ({
         try {
             set({ isLoggingIn: true });
             const res = await api.post('/auth/login', credentials);
-            const { user } = res?.data?.data;
+            const { user, token } = res?.data?.data;
+            localStorage.setItem('token', token);
             set({ user });
             toast.success('Login successful!');
+            get().connectSocket();
         } catch (error) {
             set({ user: null });
             toast.error(error.response?.data?.errors || 'Login failed. Please try again.');
@@ -52,9 +60,11 @@ const useAuth = create((set) => ({
         try {
             set({ isSigningUp: true });
             const res = await api.post('/auth/signup', userInfo);
-            const { user } = res?.data?.data;
+            const { user, token } = res?.data?.data;
             if (user) toast.success('Signup successful! Please log in.');
+            localStorage.setItem('token', token);
             set({ user, isSigningUp: false });
+            get().connectSocket();
         } catch (error) {
             set({ isSigningUp: false });
             set({ user: null });
@@ -86,12 +96,36 @@ const useAuth = create((set) => ({
             const res = await api.get('/auth/logout');
             toast.success(res?.data?.message || 'Logged out successfully');
             set({ user: null });
+            get().disConnectSocket();
         } catch (error) {
             console.error('Error during logout', error.response);
             toast.error(error.response?.data?.message || 'Logout failed. Please try again.');
         }
         
     },
+
+    connectSocket: () => {
+        const {user} = get();
+        if(!user || get().socket?.connected) return; 
+        const socket = io(BASE_URL, {
+            query: { userId: user._id }
+        });
+        socket.connect();
+        set({ socket });
+
+        socket.on('getOnlineUsers', (onlineUsers) => {
+            set({ onlineUsers });
+            
+        });
+    },
+
+    disConnectSocket: () => {
+        const {socket} = get();
+        if(socket && socket.connected){
+            socket.disconnect();
+            set({socket: null});
+        }
+    }
 }))
 
 export default useAuth
