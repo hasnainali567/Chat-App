@@ -138,7 +138,6 @@ const update = asyncHandler(async (req, res, next) => {
 
 const checkAuth = asyncHandler(async (req, res, next) => {
     const user = req.user;
-    console.log('User in check Auth', user);
 
     const { password: _, __v, ...userData } = user.toObject();
     res.status(200).json(new ApiResponse(200, 'User is Authenticated', { user: userData }));

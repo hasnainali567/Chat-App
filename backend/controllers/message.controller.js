@@ -5,6 +5,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import { isValidObjectId } from "mongoose";
 import { uploadToCloudinary } from "../config/cloudinary.js";
 import ApiError from "../utils/ApiError.js";
+import { getReciverSocketId, io } from "../utils/socket.js";
 
 const getUserForSidebar = asyncHandler(async (req, res) => {
     const user = req.user;
@@ -21,10 +22,11 @@ const getMessages = asyncHandler(async (req, res, next) => {
 
     const messages = await Message.find({
         $or: [
-            { senderId : userId, receiverId: userToChat },
+            { senderId: userId, receiverId: userToChat },
             { senderId: userToChat, receiverId: userId }
         ]
     }).sort({ createdAt: 1 });
+
 
     res.status(200).json(new ApiResponse(200, 'Messages fetched successfully', messages));
 
@@ -53,10 +55,16 @@ const sendMessage = asyncHandler(async (req, res, next) => {
     }
     const message = await Message.create({ senderId, receiverId, text, images: files.map(file => file.path) });
 
+    const receiverSocketId = getReciverSocketId(receiverId);
+    if (receiverSocketId) {
+        
+        io.to(receiverSocketId).emit('newMessage', message);
+    }
+
     if (!message) {
         return next(new ApiError(500, 'Internal Server Error', 'Failed to send message'));
     }
-    
+
     res.status(200).json(new ApiResponse(200, 'Message sent successfully', message));
 });
 
